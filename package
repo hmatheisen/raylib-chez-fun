@@ -1,0 +1,64 @@
+#!/usr/bin/env chez --script
+;; -*- scheme -*-
+
+(define output-dir "build")
+
+(define (in-output-dir filename)
+  (string-append output-dir "/" filename))
+
+(define (maybe-create-dir)
+  (unless
+      (file-exists? output-dir)
+    (let ([output-dir (string-append output-dir "/")])
+      (display "creating output directory")
+      (newline)
+      (system (string-append "mkdir " output-dir)))))
+
+(define (file-without-ext filename ext)
+  (substring filename 0
+             (- (string-length filename)
+                (string-length ext))))
+
+(define (file-ends-with? ext filename)
+  (let* ([len (string-length filename)]
+         [ext-len (string-length ext)])
+    (and (>= len ext-len)
+         (string=? ext (substring filename (- len ext-len) len)))))
+
+(define (list-scm-files dir)
+  (filter
+   (lambda (filename)
+     (file-ends-with? ".scm" filename))
+   (directory-list dir)))
+
+(define (list-so-files dir)
+  (filter
+   (lambda (filename)
+     (file-ends-with? ".so" filename))
+   (directory-list dir)))
+
+(define (compile-scm-files)
+  (let ([scm-files (list-scm-files ".")])
+    (for-each
+     (lambda (filename)
+       (compile-file filename
+                     (string-append
+                      (in-output-dir
+                       (file-without-ext filename ".scm"))
+                      ".so")))
+     scm-files)))
+
+(define (create-boot-file)
+  (display "creating boot file")
+  (newline)
+  (let* ([output-boot (in-output-dir "raylib.boot")]
+         [so-files (map (lambda (filename)
+                          (in-output-dir filename))
+                       (list-so-files output-dir))])
+    (apply
+     make-boot-file
+     `(,output-boot ("chez --script") ,@so-files))))
+
+(maybe-create-dir)
+(compile-scm-files)
+(create-boot-file)

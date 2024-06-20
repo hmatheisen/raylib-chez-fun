@@ -1,4 +1,4 @@
-(load "raylib.scm")
+(include "raylib.scm")
 
 (define screen-width 800)
 (define screen-height 600)
